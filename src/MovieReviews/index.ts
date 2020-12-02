@@ -1,16 +1,12 @@
 import fetch from "node-fetch";
 import { URLSearchParams } from "url";
+import { APIBase } from "../base";
 
 const BASE_URL = "https://api.nytimes.com/svc/movies/v2";
 
-export class MovieReviews {
-  private apikey: string;
-  constructor(apikey: string) {
-    this.apikey = apikey;
-  }
-
-  async search(parameters: SearchArgs): Promise<SearchResults> {
-    const searchParams = this.encodeURLParameters(parameters);
+export class MovieReviews extends APIBase {
+  async search(parameters?: SearchArgs): Promise<SearchResults> {
+    const searchParams = this.encodeURLParameters(parameters || {});
     const response = await fetch(
       `${BASE_URL}/reviews/search.json?${searchParams}`
     );
@@ -23,16 +19,17 @@ export class MovieReviews {
         ? () =>
             this.search({
               ...parameters,
-              offset: (parameters.offset || 0) + 20,
+              offset: (parameters?.offset || 0) + 20,
             })
         : undefined,
     };
   }
 
-  async all(parameters: ListArgs): Promise<SearchResults> {
+  async all(parameters?: ListArgs): Promise<SearchResults> {
     return await this.allAndPicks("all", parameters);
   }
-  async picks(parameters: ListArgs): Promise<SearchResults> {
+
+  async picks(parameters?: ListArgs): Promise<SearchResults> {
     return await this.allAndPicks("picks", parameters);
   }
   
@@ -54,8 +51,9 @@ export class MovieReviews {
 
   private async allAndPicks(
     query: "all" | "picks",
-    { offset, order }: ListArgs
+    parameters?: ListArgs
   ) {
+    const { offset, order } = parameters || {}
     const searchparams = this.baseSearchParams();
     if (offset) {
       if (offset % 20 !== 0) throw new Error("Offset MUST be a multiple of 20");
@@ -80,23 +78,12 @@ export class MovieReviews {
     };
   }
 
-  private checkError(status: number, json: any) {
-    if (status !== 200) {
-      throw new Error(
-        `Error code ${status}: ${json.fault.faultstring} (${json.fault.detail.errorcode})`
-      );
-    }
-  }
-  private baseSearchParams(): URLSearchParams {
-    const searchparams = new URLSearchParams();
-    searchparams.append("api-key", this.apikey);
-    return searchparams;
-  }
   private datesToRange(range: { start: Date; end?: Date }): string {
     let result = range.start.toISOString().substr(0, 10);
     if (range.end) result += ";" + range.end.toISOString().substr(0, 10);
     return result;
   }
+
   private encodeURLParameters(parameters: SearchArgs): URLSearchParams {
     const searchParams = this.baseSearchParams();
     if (parameters.criticsPick) searchParams.append("critics-pick", "Y");
@@ -124,6 +111,7 @@ export class MovieReviews {
     if (parameters.query) searchParams.append("query", parameters.query);
     return searchParams;
   }
+
   private unpackReviews(raw: any[]): Review[] {
     return raw.map(
       (it: any): Review => ({
@@ -150,6 +138,7 @@ export class MovieReviews {
       })
     );
   }
+
   private unpackCritics(raw: any[]): Critic[] {
     return raw.map(
       (it: any): Critic => ({

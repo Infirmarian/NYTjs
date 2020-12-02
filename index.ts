@@ -1,4 +1,4 @@
-import { MovieReviews } from "./src/MovieReviews";
+import { MovieReviews } from "./src/movieReviews";
 export class NYTjs {
   public MovieReviews: MovieReviews;
   constructor(key?: string) {
